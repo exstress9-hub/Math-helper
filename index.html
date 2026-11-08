@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="tr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Matematik Defteri</title>
+<style>
+:root{--bg:#0d2747;--line:#ffffff14;--ink:#eef3fb;--dim:#9fb4d3;--mark:#ffd84a;--card:#12335c;--bad:#ff8a7a}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;color:var(--ink);font:16px/1.5 system-ui,sans-serif;background:var(--bg);
+background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:28px 28px;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+main{max-width:720px;margin:0 auto;padding:20px 16px 40px}
+h1{font:italic 700 34px/1.1 Georgia,serif;margin:12px 0 4px}
+h1 span{background:linear-gradient(transparent 60%,#ffd84a66 60%)}
+.sub{color:var(--dim);margin:0 0 18px}
+.box{display:flex;gap:8px;background:var(--card);border:2px solid var(--mark);border-radius:14px;padding:6px;box-shadow:5px 5px 0 #0006}
+input{flex:1;min-width:0;background:none;border:0;color:var(--ink);font:italic 22px Georgia,serif;padding:10px;outline:0}
+.go{background:var(--mark);color:#10223c;border:0;border-radius:9px;font:700 18px system-ui;padding:0 18px;cursor:pointer}
+.go:focus-visible,.k:focus-visible,.chip:focus-visible{outline:3px solid #fff}
+.keys{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.k{background:#ffffff12;color:var(--ink);border:1px solid #ffffff30;border-radius:8px;min-width:42px;height:38px;font:italic 18px Georgia,serif;cursor:pointer}
+.k:active{background:#ffffff30}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 20px}
+.chip{background:none;border:1px dashed #9fb4d3;color:var(--dim);border-radius:99px;padding:4px 12px;font:14px system-ui;cursor:pointer}
+.res{background:var(--card);border-left:5px solid var(--mark);border-radius:6px 14px 14px 6px;padding:14px 16px;margin:0 0 16px;box-shadow:5px 5px 0 #0005}
+.res h3{margin:0 0 8px;font:600 14px system-ui;color:var(--dim)}
+.q{font:italic 20px Georgia,serif;margin-bottom:10px;word-break:break-word}
+.st{display:flex;gap:10px;padding:7px 0;border-top:1px dashed #ffffff25;animation:in .35s both}
+.st i{flex:none;width:24px;height:24px;border-radius:50%;background:#ffffff1c;text-align:center;font:600 13px/24px system-ui;font-style:normal;color:var(--dim)}
+.st div{font:italic 18px/1.45 Georgia,serif;word-break:break-word}
+.st small{display:block;font:14px system-ui;color:var(--dim)}
+.ans{margin-top:10px;display:inline-block;background:var(--mark);color:#10223c;font:italic 700 22px Georgia,serif;padding:6px 14px;border-radius:4px;transform:rotate(-1deg);animation:pop .5s .3s both}
+.err{border-left-color:var(--bad)}
+@keyframes in{from{opacity:0;transform:translateX(-8px)}}
+@keyframes pop{from{opacity:0;transform:scale(.7) rotate(-6deg)}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}}
+</style></head><body><main>
+<h1 id="h"><span>Matematik</span> Defteri</h1>
+<p class="sub" id="sub">Sorunu yaz, çözümü adım adım göreyim. İnternet gerekmez.</p>
+<div class="box"><input id="in" placeholder="örn: 2x+6=14" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" aria-label="Soru"><button class="k" id="ink">Yaz</button><button class="k" id="cam" aria-label="Fotoğraf">Foto</button><button class="go" id="go">Çöz</button></div>
+<div class="keys" id="keys"></div>
+<p class="sub" id="hint" style="margin:0 0 8px"></p>
+<div class="chips" id="chips"></div>
+<details class="res"><summary id="sum" style="cursor:pointer;font-weight:600">Neler yazabilirim?</summary><div class="q" id="hb" style="font-size:16px;margin-top:8px">İşlem · denklem (1-4. derece) · <b>x+y=5; x-y=1</b> (2-3 bilinmeyenli sistem) · eşitsizlik · türev · integral [a b] · limit x-&gt;a · carpanlara · ac · yüzde · oran a b c · faktöriyel · kombinasyon n r · permütasyon n r · ortalama … · det · ters · carpim A * B (satır;satır) · alan/çevre/hacim şekil değerler · pisagor a b · aritmetik/geometrik a1 d n · grafik f(x)</div></details>
+<div id="out"></div>
+<p class="sub"><button class="chip" id="lang">TR / RU</button></p>
+</main>
+<script>
+const $=s=>document.querySelector(s),FN=['sin','cos','tan','ln','log','sqrt','abs','exp'];
+const N=v=>({t:'n',v}),O=(o,a,b)=>({t:'o',o,a,b}),F=(f,a)=>({t:'f',f,a}),X={t:'x'};
+/* ---------- biçim ---------- */
+function fm(v,tol=1e-9){if(!isFinite(v))return'tanımsız';if(Math.abs(v-Math.round(v))<tol)return String(Math.round(v)).replace('-','−');
+for(let d=2;d<=1000;d++){const n=Math.round(v*d);if(Math.abs(v-n/d)<tol)return(n<0?'−':'')+Math.abs(n)+'/'+d}
+return String(+v.toFixed(6)).replace('-','−')}
+const P={'+':1,'-':1,'*':2,'/':2,'^':3};
+function S(n,p=0){if(n.t=='n')return n.v<0&&p>0?'('+fm(n.v)+')':fm(n.v);if(n.t=='x')return'x';
+if(n.t=='f')return n.f=='neg'?(p>1?'(':'')+'−'+S(n.a,3)+(p>1?')':''):n.f+'('+S(n.a)+')';
+const q=P[n.o],r=n.o=='^'?'^':' '+({'*':'×','/':'÷','-':'−'}[n.o]||'+')+' ';
+const s=S(n.a,n.o=='^'?4:q)+r+S(n.b,n.o=='^'?3:q+(n.o=='-'||n.o=='/'?1:0));return q<p?'('+s+')':s}
+/* ---------- ayrıştırıcı ---------- */
+function parse(s){s=s.toLowerCase().replace(/\s+/g,'').replace(/,/g,'.').replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-').replace(/√/g,'sqrt').replace(/π/g,'pi').replace(/²/g,'^2').replace(/³/g,'^3').replace(/[–—]/g,'-');
+const t=[];s.replace(/(\d+\.?\d*|\.\d+)|([a-z]+)|(.)/g,(m,a,b,c)=>t.push(a?{n:+a}:b?{id:b}:{op:c}));let i=0;
+const pk=()=>t[i],op=c=>t[i]&&t[i].op==c;
+function ex(){let a=tm();while(op('+')||op('-')){const o=t[i++].op;a=O(o,a,tm())}return a}
+function tm(){let a=un();for(;;){if(op('*')||op('/')){const o=t[i++].op;a=O(o,a,un())}else if(t[i]&&(t[i].n!==undefined||(t[i].id&&true)||op('('))){a=O('*',a,un())}else return a}}
+function un(){if(op('-')){i++;return F('neg',un())}if(op('+')){i++;return un()}return pw()}
+function pw(){const a=at();if(op('^')){i++;return O('^',a,un())}return a}
+function at(){const k=t[i++];if(!k)throw 0;if(k.n!==undefined)return N(k.n);
+if(k.op=='('){const e=ex();if(!op(')'))throw 0;i++;return e}
+if(k.id){if(FN.includes(k.id)){return F(k.id,op('(')?at():pw())}
+if(k.id=='pi')return N(Math.PI);if(k.id=='e'){if(op('^')){i++;return F('exp',un())}return N(Math.E)}
+if(k.id=='x')return X;if(k.id=='y'||k.id=='z')return{t:'v',k:k.id};throw 0}throw 0}
+const r=ex();if(i<t.length)throw 0;return r}
+function ev(n,x){if(n.t=='n')return n.v;if(n.t=='x')return x;if(n.t=='v')return VAR[n.k]||0;
+if(n.t=='f'){const a=ev(n.a,x);return({neg:-a,sin:Math.sin(a),cos:Math.cos(a),tan:Math.tan(a),ln:Math.log(a),log:Math.log10(a),sqrt:Math.sqrt(a),abs:Math.abs(a),exp:Math.exp(a)})[n.f]}
+const a=ev(n.a,x),b=ev(n.b,x);return({'+':a+b,'-':a-b,'*':a*b,'/':a/b,'^':Math.pow(a,b)})[n.o]}
+const hasX=n=>n.t=='x'||(n.t=='f'&&hasX(n.a))||(n.t=='o'&&(hasX(n.a)||hasX(n.b)));
+/* ---------- aritmetik adımlar ---------- */
+function red(n){if(n.t=='n'||n.t=='x'||n.t=='v')return[n,0];
+if(n.t=='f')return n.a.t=='n'?[N(ev(n,0)),1]:(([a,c])=>[{...n,a},c])(red(n.a));
+if(n.a.t=='n'&&n.b.t=='n')return[N(ev(n,0)),1];
+let[a,c]=red(n.a);if(c)return[{...n,a},1];let[b,d]=red(n.b);return[{...n,b},d]}
+function arith(n){const st=[];let c=n,ch=1,last=S(n);while(ch&&st.length<40){[c,ch]=red(c);const s=S(c);if(ch&&s!=last){st.push({t:s});last=s}}
+return{st,ans:fm(ev(n,0))}}
+/* ---------- türev ---------- */
+const nz=n=>n.t=='n';
+function sm(n){if(n.t=='n'||n.t=='x')return n;if(n.t=='f'){const a=sm(n.a);if(nz(a))return N(ev({...n,a},0));if(n.f=='neg'&&a.t=='f'&&a.f=='neg')return a.a;return{...n,a}}
+const a=sm(n.a),b=sm(n.b),o=n.o;if(nz(a)&&nz(b))return N(ev(O(o,a,b),0));
+const z=v=>nz(v)&&v.v==0,u=v=>nz(v)&&v.v==1;
+if(o=='+'){if(z(a))return b;if(z(b))return a}
+if(o=='-'){if(z(b))return a;if(z(a))return sm(F('neg',b))}
+if(o=='*'){if(z(a)||z(b))return N(0);if(u(a))return b;if(u(b))return a;if(nz(a)&&a.v==-1)return sm(F('neg',b))}
+if(o=='/'){if(z(a))return N(0);if(u(b))return a}
+if(o=='^'){if(u(b))return a;if(z(b))return N(1)}
+return O(o,a,b)}
+function D(n){const m=(a,b)=>O('*',a,b);
+if(n.t=='n')return N(0);if(n.t=='x')return N(1);
+if(n.t=='f'){const a=n.a,d=D(a);switch(n.f){
+case'neg':return F('neg',d);case'sin':return m(F('cos',a),d);case'cos':return F('neg',m(F('sin',a),d));
+case'tan':return O('/',d,O('^',F('cos',a),N(2)));case'ln':return O('/',d,a);case'exp':return m(F('exp',a),d);
+case'sqrt':return O('/',d,m(N(2),F('sqrt',a)));case'log':return O('/',d,m(a,N(Math.LN10)));
+case'abs':return m(O('/',a,F('abs',a)),d)}}
+const{a,b,o}=n;
+if(o=='+'||o=='-')return O(o,D(a),D(b));
+if(o=='*')return O('+',m(D(a),b),m(a,D(b)));
+if(o=='/')return O('/',O('-',m(D(a),b),m(a,D(b))),O('^',b,N(2)));
+if(!hasX(b))return m(m(b,O('^',a,O('-',b,N(1)))),D(a));
+if(!hasX(a))return m(m(n,F('ln',a)),D(b));
+return m(n,O('+',m(D(b),F('ln',a)),O('/',m(b,D(a)),a)))}
+const terms=(n,s=1,r=[])=>{if(n.t=='o'&&(n.o=='+'||n.o=='-')){terms(n.a,s,r);terms(n.b,n.o=='-'?-s:s,r)}else r.push([s,n]);return r};
+function rule(n){if(!hasX(n))return'sabit → türevi 0';if(n.t=='x')return'x’in türevi 1';
+if(n.t=='f')return n.f=='neg'?'eksi işareti dışarı çıkar':n.a.t=='x'?n.f+' için temel türev kuralı':'zincir kuralı: dış fonksiyonun türevi × iç fonksiyonun türevi';
+if(n.o=='*')return hasX(n.a)&&hasX(n.b)?'çarpım kuralı: (u·v)′ = u′v + uv′':'sabit çarpan dışarı çıkar';
+if(n.o=='/')return hasX(n.b)?'bölüm kuralı: (u/v)′ = (u′v − uv′)/v²':'sabite bölüm';
+if(n.o=='^')return !hasX(n.b)?'kuvvet kuralı: (xⁿ)′ = n·xⁿ⁻¹':!hasX(n.a)?'üstel kural: (aᵘ)′ = aᵘ·ln a·u′':'genel üslü türev';return''}
+function deriv(src){const f=parse(src);const st=[{t:'f(x) = '+S(f),s:'Terimleri ayrı ayrı türetiriz.'}];
+terms(f).forEach(([s,n])=>st.push({t:'('+(s<0?'−':'')+S(n)+')′ = '+(s<0?'−':'')+'('+S(sm(D(n)))+')',s:rule(n)}));
+return{st,ans:"f′(x) = "+S(sm(D(f)))}}
+/* ---------- denklem ---------- */
+const pf=(a,b,c)=>{let s='';[[a,'x²'],[b,'x'],[c,'']].forEach(([k,v])=>{if(Math.abs(k)<1e-12)return;const ab=Math.abs(k),cf=(ab==1&&v)?'':fm(ab);s+=(s?(k<0?' − ':' + '):(k<0?'−':''))+cf+v});return(s||'0')+' = 0'};
+function solve(src){const[l,r]=src.split('=');if(r===undefined||src.split('=').length>2)throw 0;
+const f=O('-',parse(l),parse(r)),g=x=>ev(f,x),c=g(0),a1=g(1),m1=g(-1);const a=(a1+m1)/2-c,b=(a1-m1)/2;
+const ok=[2,-3,5].every(x=>Math.abs(g(x)-(a*x*x+b*x+c))<1e-7*(1+Math.abs(g(x))));
+const st=[{t:S(parse(l))+' = '+S(parse(r)),s:'Verilen denklem'}];
+if(ok){st.push({t:pf(a,b,c),s:'Her şeyi sol tarafa toplayıp sadeleştirdik'});
+if(Math.abs(a)<1e-12){if(Math.abs(b)<1e-12){return{st,ans:Math.abs(c)<1e-9?'Her x bir çözümdür':'Çözüm yok'}}
+st.push({t:fm(b)+'x = '+fm(-c),s:'Sabiti karşı tarafa atarız'});st.push({t:'x = '+fm(-c)+' ÷ '+S(N(b),1),s:'İki tarafı x’in katsayısına böleriz'});
+return{st,ans:'x = '+fm(-c/b)}}
+const d=b*b-4*a*c;st.push({t:'Δ = b² − 4ac = '+S(N(b),1)+'² − 4·'+S(N(a),1)+'·'+S(N(c),1)+' = '+fm(d),s:'Diskriminant'});
+if(Math.abs(d)<1e-9){st.push({t:'x = −b / 2a = '+fm(-b/(2*a)),s:'Δ = 0 → çift kök'});return{st,ans:'x = '+fm(-b/(2*a))}}
+if(d<0){const re=-b/(2*a),im=Math.sqrt(-d)/(2*a);st.push({t:'Δ < 0',s:'Gerçek kök yok, karmaşık kökler var'});return{st,ans:'x = '+fm(re)+' ± '+fm(Math.abs(im))+'i'}}
+const x1=(-b-Math.sqrt(d))/(2*a),x2=(-b+Math.sqrt(d))/(2*a);
+st.push({t:'x = (−b ± √Δ) / 2a = ('+fm(-b)+' ± √'+fm(d)+') / '+fm(2*a),s:'Kök formülü'});
+st.push({t:'x₁ = '+fm(x1)+'   x₂ = '+fm(x2),s:'İki kök'});return{st,ans:'x = '+fm(x1)+'  veya  x = '+fm(x2)}}
+const pc=pfit(g);if(pc&&pc.length>3){const{R,c:rs}=rts(pc);st.push({t:pstr(pc)+' = 0',s:'Polinom hâline getirdik (derece '+(pc.length-1)+')'});const u=[...new Set(R.map(r=>fm(r)))];st.push({t:'Gerçek kökler: '+(u.join(',  ')||'yok'),s:'Kökü bulup polinomu bölerek dereceyi düşürürüz'});if(rs.length>1)st.push({t:'Kalan: '+pstr(rs)+' = 0',s:'Gerçek kök vermiyor (karmaşık kökler)'});return{st,ans:u.length?'x = '+u.join('  veya  '):'Gerçek kök yok'}}
+st.push({t:'f(x) = '+S(f)+' = 0',s:'Bu denklem polinom değil, kökleri sayısal olarak arıyoruz'});
+const rt=[];let px=-200,pv=g(px);for(let x=-199.9;x<=200;x+=.1){const v=g(x);if(isFinite(pv)&&isFinite(v)&&pv*v<=0&&Math.abs(v-pv)<50){let lo=x-.1,hi=x;for(let k=0;k<60;k++){const mid=(lo+hi)/2;(g(lo)*g(mid)<=0)?hi=mid:lo=mid}const q=(lo+hi)/2;if(Math.abs(g(q))<1e-6&&!rt.some(y=>Math.abs(y-q)<1e-4))rt.push(q)}pv=v}
+if(!rt.length)return{st,ans:'[−200, 200] aralığında kök bulunamadı'};
+st.push({t:'x ≈ '+rt.map(fm).join(',  '),s:'İşaret değişimi + yarıya bölme (bisection)'});return{st,ans:'x ≈ '+rt.map(fm).join('  veya  ')}}
+/* ---------- sayı yardımcıları ---------- */
+const gcd=(a,b)=>b?gcd(b,a%b):a;
+function nums(s){const m=s.match(/-?\d+/g);if(!m||m.length<2)throw 0;return m.map(Number)}
+function ebob(s,l){const[a,b]=nums(s);const st=[];let x=Math.abs(a),y=Math.abs(b);st.push({t:'EBOB('+x+', '+y+')',s:'Öklid algoritması: büyük sayıyı küçüğe böl, kalanla devam et'});
+while(y){st.push({t:x+' = '+Math.floor(x/y)+'·'+y+' + '+(x%y)});[x,y]=[y,x%y]}
+if(!l)return{st,ans:'EBOB = '+x};const g=gcd(Math.abs(a),Math.abs(b));st.push({t:'EKOK = (a·b) / EBOB = '+Math.abs(a*b)+' / '+g,s:'EKOK formülü'});return{st,ans:'EKOK = '+Math.abs(a*b)/g}}
+function prime(s){let n=+(s.match(/\d+/)||[0])[0];if(n<2)throw 0;const st=[],o=n,f=[];
+for(let p=2;p*p<=n;p++)while(n%p==0){st.push({t:n+' ÷ '+p+' = '+n/p,s:p+' ile bölünür'});f.push(p);n/=p}
+if(n>1){f.push(n);st.push({t:n+' asaldır',s:'Kalan asal çarpan'})}
+const c={};f.forEach(p=>c[p]=(c[p]||0)+1);return{st,ans:o+' = '+Object.entries(c).map(([p,k])=>p+(k>1?'^'+k:'')).join(' × ')+(f.length==1?'  (asal sayı)':'')}}
+/* ---------- genişletmeler ---------- */
+const fd=v=>String(+v.toFixed(4)),VAR={},tr=s=>s.replace(/ç/g,'c').replace(/ş/g,'s').replace(/ğ/g,'g').replace(/ö/g,'o').replace(/ü/g,'u').replace(/ı/g,'i');
+const nm=s=>(s.match(/-?\d+\.?\d*/g)||[]).map(Number),fa=n=>{let r=1n;for(let i=2n;i<=BigInt(n);i++)r*=i;return r};
+const pv=(c,x)=>c.reduceRight((a,k)=>a*x+k,0);
+const pstr=c=>{let s='';for(let k=c.length-1;k>=0;k--){const v=c[k];if(Math.abs(v)<1e-9)continue;const ab=Math.abs(v),cf=(Math.abs(ab-1)<1e-9&&k)?'':fm(ab),xs=k?'x'+(k>1?'^'+k:''):'';s+=(s?(v<0?' − ':' + '):(v<0?'−':''))+cf+xs}return s||'0'};
+function gs(M){const n=M.length;for(let i=0;i<n;i++){let p=i;for(let j=i+1;j<n;j++)if(Math.abs(M[j][i])>Math.abs(M[p][i]))p=j;if(Math.abs(M[p][i])<1e-12)return null;[M[i],M[p]]=[M[p],M[i]];for(let j=0;j<n;j++)if(j!=i){const k=M[j][i]/M[i][i];M[j]=M[j].map((v,c)=>v-k*M[i][c])}}return M.map((r,i)=>r[n]/r[i])}
+function pfit(g){for(let d=0;d<=6;d++){const M=[];for(let i=0;i<=d;i++){const x=i-Math.floor(d/2);M.push([...Array(d+1)].map((_,k)=>x**k).concat(g(x)))}
+const c=gs(M);if(c&&[-2.5,7.3,-6.1].every(x=>{const p=pv(c,x);return Math.abs(p-g(x))<1e-6*(1+Math.abs(p))}))return c.map(v=>Math.abs(v-Math.round(v))<1e-7?Math.round(v):v)}return null}
+function rts(c){c=c.slice();const R=[];
+while(c.length>3){let f=null,p=pv(c,-300);for(let x=-299.95;x<=300;x+=.05){const v=pv(c,x);if(p*v<=0){let lo=x-.05,hi=x;for(let k=0;k<80;k++){const m=(lo+hi)/2;pv(c,lo)*pv(c,m)<=0?hi=m:lo=m}f=(lo+hi)/2;break}p=v}
+if(f===null)break;const r=Math.abs(f-Math.round(f))<1e-6?Math.round(f):f;R.push(r);const n=c.length-1,q=Array(n);q[n-1]=c[n];for(let i=n-1;i>=1;i--)q[i-1]=c[i]+r*q[i];c=q}
+if(c.length==3){const[c0,b,a]=c,d=b*b-4*a*c0;if(d>-1e-9){const s=Math.sqrt(Math.max(d,0));R.push((-b-s)/(2*a));R.push((-b+s)/(2*a));c=[a]}}
+else if(c.length==2){R.push(-c[0]/c[1]);c=[c[1]]}
+return{R:R.map(r=>Math.abs(r-Math.round(r))<1e-9?Math.round(r):r),c}}
+function nroots(g){const rt=[];let p=g(-200);for(let x=-199.9;x<=200;x+=.1){const v=g(x);if(isFinite(p)&&isFinite(v)&&p*v<=0&&Math.abs(v-p)<50){let lo=x-.1,hi=x;for(let k=0;k<60;k++){const m=(lo+hi)/2;g(lo)*g(m)<=0?hi=m:lo=m}const q=(lo+hi)/2;if(Math.abs(g(q))<1e-6&&!rt.some(y=>Math.abs(y-q)<1e-4))rt.push(q)}p=v}return rt}
+/* denklem sistemi */
+const eq=(r,vs)=>{let s='';vs.forEach((v,i)=>{const k=r[i];if(Math.abs(k)<1e-12)return;s+=(s?(k<0?' − ':' + '):(k<0?'−':''))+(Math.abs(Math.abs(k)-1)<1e-12?'':fm(Math.abs(k)))+v});return(s||'0')+' = '+fm(r[vs.length])};
+function sys(s){const E=s.split(';').map(e=>e.split('=')),n=E.length;if(n<2||n>3||E.some(e=>e.length!=2))throw 0;const vs=['x','y','z'].slice(0,n);
+const M=E.map(([l,r])=>{const f=O('-',parse(l),parse(r)),g=a=>{VAR.y=a[1]||0;VAR.z=a[2]||0;return ev(f,a[0]||0)},c=g([]),co=vs.map((_,i)=>{const a=[0,0,0];a[i]=1;return g(a)-c});
+if(Math.abs(g([2,3,5].slice(0,3))-(c+co[0]*2+(co[1]||0)*3+(co[2]||0)*5))>1e-7)throw 0;return[...co,-c]});
+const show=()=>M.map(r=>eq(r,vs)).join('   ;   '),st=[{t:show(),s:'Denklem sistemi ('+n+' bilinmeyenli) — Gauss-Jordan yöntemi'}];
+for(let i=0;i<n;i++){let p=i;for(let j=i+1;j<n;j++)if(Math.abs(M[j][i])>Math.abs(M[p][i]))p=j;
+if(Math.abs(M[p][i])<1e-12)return{st,ans:'Tek çözüm yok (çözümsüz ya da sonsuz çözüm)'};
+if(p!=i){[M[i],M[p]]=[M[p],M[i]];st.push({t:show(),s:'Satırları değiştir'})}
+const d=M[i][i];M[i]=M[i].map(v=>v/d);for(let j=0;j<n;j++)if(j!=i){const k=M[j][i];if(Math.abs(k)>1e-12)M[j]=M[j].map((v,c)=>v-k*M[i][c])}
+st.push({t:show(),s:vs[i]+' için: satırı böl, diğer satırlardan '+vs[i]+'’i yok et'})}
+return{st,ans:vs.map((v,i)=>v+' = '+fm(M[i][n])).join(',  ')}}
+/* eşitsizlik */
+function ineq(l){const op=l.match(/<=|>=|≤|≥|<|>/)[0],[a,b]=l.split(op),f=O('-',parse(a),parse(b)),g=x=>ev(f,x),pc=pfit(g),eqq=['<=','>=','≤','≥'].includes(op),lt=op[0]=='<'||op=='≤';
+let rt=pc&&pc.length>1?rts(pc).R:nroots(g);rt=[...new Set(rt.map(r=>+r.toFixed(9)))].sort((p,q)=>p-q);
+const st=[{t:S(parse(a))+' '+op+' '+S(parse(b)),s:'Verilen eşitsizlik'},{t:'f(x) = '+S(f)+'   köklerle ayrılır: '+(rt.length?rt.map(fm).join(', '):'kök yok'),s:'Her şeyi bir tarafa alıp kökleri buluruz'}];
+const B=[-Infinity,...rt,Infinity],iv=[],e=v=>isFinite(v)?fm(v):v<0?'−∞':'∞';
+for(let i=0;i<B.length-1;i++){const lo=B[i],hi=B[i+1],t=lo==-Infinity?(hi==Infinity?0:hi-1):hi==Infinity?lo+1:(lo+hi)/2,v=g(t);st.push({t:'x ∈ ('+e(lo)+', '+e(hi)+')  →  f '+(v<0?'< 0':'> 0'),s:i?'':'Her aralıkta bir sayı deneriz (işaret tablosu)'});if(lt?v<0:v>0)iv.push([lo,hi])}
+const out=[];iv.forEach(([lo,hi])=>{const pr=out[out.length-1];if(eqq&&pr&&pr[1]==lo)pr[1]=hi;else out.push([lo,hi])});
+if(eqq)rt.forEach(r=>{if(!out.some(([lo,hi])=>lo<=r&&r<=hi))out.push([r,r])});
+out.sort((p,q)=>p[0]-q[0]);
+return{st,ans:out.length?'x ∈ '+out.map(([lo,hi])=>lo==hi?'{'+fm(lo)+'}':(eqq&&isFinite(lo)?'[':'(')+e(lo)+', '+e(hi)+(eqq&&isFinite(hi)?']':')')).join(' ∪ '):'Çözüm yok'}}
+/* integral */
+const lin=u=>{if(!hasX(u))return null;const f=x=>ev(u,x);return Math.abs(f(2)-2*f(1)+f(0))<1e-9&&Math.abs(f(1)-f(0))>1e-12?f(1)-f(0):null};
+const TI={sin:u=>'−cos('+u+')',cos:u=>'sin('+u+')',exp:u=>'e^('+u+')'},dv=a=>a==1?'':' / '+fm(a);
+function IG(n){n=sm(n);if(!hasX(n))return S(n)+'x';if(n.t=='x')return'x²/2';
+if(n.t=='f'){if(n.f=='neg'){const r=IG(n.a);return r&&'−('+r+')'}const a=lin(n.a);return TI[n.f]&&a?TI[n.f](S(n.a))+dv(a):null}
+const{a,b,o}=n;
+if(o=='+'||o=='-'){const p=IG(a),q=IG(b);return p&&q?p+(o=='+'?' + ':' − ')+'('+q+')':null}
+if(o=='*'){if(!hasX(a)){const r=IG(b);return r&&(S(a,2)=='1'?r:S(a,2)+'·('+r+')')}if(!hasX(b)){const r=IG(a);return r&&S(b,2)+'·('+r+')'}return bp(a,b)||bp(b,a)}
+if(o=='/'){if(!hasX(b)){const r=IG(a);return r&&'('+r+') / '+S(b,3)}if(!hasX(a)){const l=lin(b);return l?(S(a,3)=='1'?'':S(a,3)+'·')+'ln|'+S(b)+'|'+dv(l):null}return null}
+if(o=='^'&&!hasX(b)){const l=lin(a),k=ev(b,0);if(!l)return null;if(k==-1)return'ln|'+S(a)+'|'+dv(l);return(a.t=='x'?'x':'('+S(a)+')')+'^'+fm(k+1)+' / '+fm((k+1)*l)}
+return null}
+function simp(g,a,b){const n=2000,h=(b-a)/n;let s=g(a)+g(b);for(let i=1;i<n;i++)s+=g(a+i*h)*(i%2?4:2);return s*h/3}
+function integ(s){const m=s.match(/^\s*(-?\d+\.?\d*)\s+(-?\d+\.?\d*)\s+(.+)$/),f=parse(m?m[3]:s),F=IG(f),st=[{t:'f(x) = '+S(f),s:m?'Belirli integral: '+m[1]+' ile '+m[2]+' arası':'Terim terim antitürev alırız'}];
+if(F)st.push({t:'F(x) = '+F+(m?'':' + C'),s:'Kuvvet, temel ve kısmi (parça parça) integral kuralları'});
+if(!m)return{st,ans:F?'∫ f(x) dx = '+F+' + C':'Bu integral için kural tablom yok'};
+const a=+m[1],b=+m[2],v=simp(x=>ev(f,x),a,b);st.push({t:'F('+fm(b)+') − F('+fm(a)+')',s:F?'Sınırlar yerine konur (değer sayısal olarak da doğrulandı)':'Antitürev tablom yok, sayısal integral (Simpson) kullanıldı'});
+return{st,ans:'∫ = '+fm(Math.round(v*1e9)/1e9,1e-6)}}
+/* limit */
+function limit(s){const m=s.match(/^\s*x?\s*(?:->|→|=>)\s*(-?(?:inf|sonsuz)|-?\d+\.?\d*)\s*(.+)$/);if(!m)throw 0;
+const f=parse(m[2]),g=x=>ev(f,x),inf=/inf|sonsuz/.test(m[1]),sg=m[1][0]=='-'?-1:1,nice=v=>Math.abs(v)>1e8?(v>0?'+∞':'−∞'):fm(+v.toPrecision(7),1e-4);
+const st=[{t:'lim x→'+(inf?(sg<0?'−∞':'∞'):fm(+m[1]))+'  '+S(f),s:'Limit'}];
+if(inf){const vs=[1e2,1e4,1e6].map(h=>g(sg*h));st.push({t:'f(x) ≈ '+vs.map(nice).join(',  '),s:'x = '+(sg<0?'−':'')+'100, 10 000, 1 000 000 için değerlere bakarız'});return{st,ans:'limit = '+nice(vs[2])}}
+const a=+m[1],d=g(a);if(isFinite(d)){st.push({t:'f('+fm(a)+') = '+fm(d),s:'Doğrudan yerine koyma'});return{st,ans:'limit = '+fm(d)}}
+st.push({t:'f('+fm(a)+') tanımsız',s:'Belirsizlik var: soldan ve sağdan yaklaşırız'});
+const L=[1e-2,1e-4,1e-6].map(h=>g(a-h)),R=[1e-2,1e-4,1e-6].map(h=>g(a+h));
+st.push({t:'Soldan: '+L.map(nice).join(', '),s:'x = a−0,01 · a−0,0001 · a−0,000001'});st.push({t:'Sağdan: '+R.map(nice).join(', ')});
+const l=L[2],r=R[2];
+if(Math.abs(l-r)<1e-3*(1+Math.abs(l)))return{st,ans:'limit = '+nice((l+r)/2)};
+if(Math.abs(l)>1e6&&Math.abs(r)>1e6&&Math.sign(l)==Math.sign(r))return{st,ans:'limit = '+(l>0?'+∞':'−∞')};
+return{st,ans:'Limit yok (soldan ≠ sağdan)'}}
+/* yüzde, oran, kombinatorik, istatistik */
+function pct(s){const[a,b]=nm(s);if(b===undefined)throw 0;const v=b*a/100;return{st:[{t:fm(b)+' sayısının %'+fm(a)+'’i',s:'Yüzde = sayı × yüzde / 100'},{t:fm(b)+' × '+fm(a)+' / 100 = '+fm(v)}],ans:fm(v)}}
+function oran(s){const[a,b,c]=nm(s);if(c===undefined||!b)throw 0;const v=a*c/b;return{st:[{t:fm(a)+' / '+fm(b)+' = x / '+fm(c),s:'Orantı'},{t:'x = '+fm(a)+' × '+fm(c)+' / '+fm(b),s:'İçler dışlar çarpımı'}],ans:'x = '+fm(v)}}
+function fakt(s){const[n]=nm(s);if(!(n>=0&&n<=300))throw 0;const e=n<=12?[...Array(n)].map((_,i)=>n-i).join(' × '):n+' × '+(n-1)+' × … × 1';return{st:[{t:n+'! = '+(n?e:'1'),s:'Faktöriyel'}],ans:n+'! = '+fa(n)}}
+function kp(s,c){const[n,r]=nm(s);if(!(r>=0&&n>=r&&n<=300))throw 0;const v=c?fa(n)/(fa(r)*fa(n-r)):fa(n)/fa(n-r),k=(c?'C':'P')+'('+n+', '+r+')';return{st:[{t:k+' = '+(c?n+'! / ('+r+'! · '+(n-r)+'!)':n+'! / '+(n-r)+'!'),s:c?'Kombinasyon: sıra önemsiz':'Permütasyon: sıra önemli'}],ans:k+' = '+v}}
+function stat(s){const a=nm(s);if(a.length<2)throw 0;const n=a.length,sum=a.reduce((p,q)=>p+q,0),mu=sum/n,sr=[...a].sort((p,q)=>p-q),md=n%2?sr[(n-1)/2]:(sr[n/2-1]+sr[n/2])/2,cn={};a.forEach(v=>cn[v]=(cn[v]||0)+1);
+const mx=Math.max(...Object.values(cn)),mod=Object.keys(cn).filter(k=>cn[k]==mx),va=a.reduce((p,q)=>p+(q-mu)**2,0)/n,sd=Math.sqrt(va);
+return{st:[{t:'Ortalama = '+fm(sum)+' / '+n+' = '+fm(mu),s:n+' veri'},{t:'Sıralı: '+sr.map(fm).join(', '),s:'Medyan: ortadaki değer (çift sayıda veride ortadaki ikinin ortalaması)'},{t:'Medyan = '+fm(md)},{t:'Mod = '+(mx==1?'yok (hepsi birer kez)':mod.join(', ')),s:'En çok tekrar eden'},{t:'Varyans = Σ(x − ort)² / n = '+fd(va),s:'Standart sapma = √varyans'},{t:'Standart sapma = '+fd(sd),s:'Örneklem (n−1) için: '+fd(sd*Math.sqrt(n/(n-1)))}],ans:'Ort = '+fm(mu)+',  Medyan = '+fm(md)+',  Std = '+fd(sd)}}
+function det(s){const M=s.split(';').map(nm).filter(r=>r.length),n=M.length;if(!(n==2||n==3)||M.some(r=>r.length!=n))throw 0;
+if(n==2){const[[a,b],[c,d]]=M;return{st:[{t:'det = a·d − b·c = '+a+'·'+d+' − '+b+'·'+c,s:'2×2 determinant'}],ans:'det = '+fm(a*d-b*c)}}
+const[[a,b,c],[d,e,f],[g,h,i]]=M,p=a*e*i+b*f*g+c*d*h,q=c*e*g+a*f*h+b*d*i;
+return{st:[{t:'Artılar: '+a+'·'+e+'·'+i+' + '+b+'·'+f+'·'+g+' + '+c+'·'+d+'·'+h+' = '+fm(p),s:'Sarrus kuralı'},{t:'Eksiler: '+c+'·'+e+'·'+g+' + '+a+'·'+f+'·'+h+' + '+b+'·'+d+'·'+i+' = '+fm(q)},{t:fm(p)+' − '+fm(q)}],ans:'det = '+fm(p-q)}}
+/* geometri ve diziler */
+const GE={'alan kare':['Alan = a²',a=>a*a],'alan dikdortgen':['Alan = a × b',(a,b)=>a*b],'alan ucgen':['Alan = taban × yükseklik / 2',(a,b)=>a*b/2],'alan daire':['Alan = π r²',r=>Math.PI*r*r],'cevre kare':['Çevre = 4a',a=>4*a],'cevre dikdortgen':['Çevre = 2(a + b)',(a,b)=>2*(a+b)],'cevre daire':['Çevre = 2π r',r=>2*Math.PI*r],'hacim kup':['Hacim = a³',a=>a**3],'hacim kure':['Hacim = 4/3 π r³',r=>4/3*Math.PI*r**3],'hacim silindir':['Hacim = π r² h',(r,h)=>Math.PI*r*r*h],'hacim koni':['Hacim = π r² h / 3',(r,h)=>Math.PI*r*r*h/3],'hacim prizma':['Hacim = a × b × c',(a,b,c)=>a*b*c],'pisagor':['c = √(a² + b²)',(a,b)=>Math.hypot(a,b)]};
+function geo(t){const k=Object.keys(GE).find(k=>t.startsWith(k));if(!k)throw 0;const[fo,fn]=GE[k],a=nm(t.slice(k.length));if(a.length<fn.length)throw 0;const v=fn(...a);
+return{st:[{t:fo,s:k[0].toUpperCase()+k.slice(1)+' formülü'},{t:'Değerler: '+a.map(fm).join(', ')},{t:'= '+fm(v,1e-7)}],ans:fm(v,1e-7)}}
+function dizi(s,g){const[a,d,n]=nm(s);if(!(n>=1))throw 0;const an=g?a*d**(n-1):a+(n-1)*d,Sn=g?(d==1?a*n:a*(d**n-1)/(d-1)):n*(a+an)/2;
+return{st:[{t:g?'aₙ = a₁ · r^(n−1) = '+fm(a)+' · '+fm(d)+'^'+(n-1):'aₙ = a₁ + (n−1)·d = '+fm(a)+' + '+(n-1)+'·'+fm(d),s:(g?'Geometrik':'Aritmetik')+' dizi, n = '+n},{t:'aₙ = '+fm(an)},{t:g?'Sₙ = a₁(rⁿ − 1)/(r − 1)':'Sₙ = n(a₁ + aₙ)/2 = '+n+'·('+fm(a)+' + '+fm(an)+')/2',s:'İlk n terimin toplamı'}],ans:'aₙ = '+fm(an)+',  Sₙ = '+fm(Sn)}}
+/* çarpanlara ayırma ve açma */
+function carp(s){const f=parse(s),c=pfit(x=>ev(f,x));if(!c||c.length<2)throw 0;const{R,c:rest}=rts(c),gr={};
+R.sort((p,q)=>p-q).forEach(r=>{const k=r.toFixed(6);gr[k]=gr[k]||[r,0];gr[k][1]++});
+const parts=Object.values(gr).map(([r,m])=>(r==0?'x':'(x '+(r<0?'+ '+fm(-r):'− '+fm(r))+')')+(m>1?'^'+m:'')),lead=rest.length==1?rest[0]:1,pre=lead==1?'':lead==-1?'−':fm(lead);
+const st=[{t:S(f),s:'Verilen ifade'},{t:pstr(c)+(c.length>1?'':''),s:'Sadeleştirilmiş polinom'},{t:R.length?'Kökler: '+[...new Set(R.map(r=>fm(r)))].join(', '):'Gerçek kök yok',s:'Kökleri bulup (x − kök) çarpanlarına ayırırız'}];
+if(!R.length)return{st,ans:'Gerçek sayılarla çarpanlara ayrılmaz'};
+return{st,ans:pstr(c)+' = '+pre+(rest.length>1?'('+pstr(rest)+')':'')+parts.join('')}}
+function ac(s){const f=parse(s),c=pfit(x=>ev(f,x));if(!c)throw 0;return{st:[{t:S(f),s:'Verilen ifade'}],ans:S(f)+' = '+pstr(c)}}
+/* grafik */
+function plot(cv,f){const w=cv.width=(cv.clientWidth||600)*2,h=cv.height=480,g=x=>ev(f,x),c=cv.getContext('2d'),ys=[];
+for(let i=0;i<=400;i++){const v=g(-10+i*.05);if(isFinite(v)&&Math.abs(v)<1e4)ys.push(v)}
+let y0=Math.min(...ys,-1),y1=Math.max(...ys,1);const pd=(y1-y0)*.1;y0-=pd;y1+=pd;const X=x=>(x+10)/20*w,Y=y=>h-(y-y0)/(y1-y0)*h;
+c.strokeStyle='#ffffff22';c.lineWidth=1;for(let i=-10;i<=10;i++){c.beginPath();c.moveTo(X(i),0);c.lineTo(X(i),h);c.stroke()}
+c.strokeStyle='#9fb4d3';c.lineWidth=2;c.beginPath();c.moveTo(0,Y(0));c.lineTo(w,Y(0));c.moveTo(X(0),0);c.lineTo(X(0),h);c.stroke();
+c.strokeStyle='#ffd84a';c.lineWidth=3;c.beginPath();let up=0;for(let i=0;i<=800;i++){const x=-10+i*.025,v=g(x);if(!isFinite(v)||Math.abs(v)>1e4){up=0;continue}up?c.lineTo(X(x),Y(v)):c.moveTo(X(x),Y(v));up=1}c.stroke()}
+/* ---------- matris ---------- */
+const mt=M=>'[ '+M.map(r=>r.map(v=>fm(v)).join('  ')).join('  ;  ')+' ]',dt=M=>M.length==2?M[0][0]*M[1][1]-M[0][1]*M[1][0]:M[0][0]*(M[1][1]*M[2][2]-M[1][2]*M[2][1])-M[0][1]*(M[1][0]*M[2][2]-M[1][2]*M[2][0])+M[0][2]*(M[1][0]*M[2][1]-M[1][1]*M[2][0]);
+const sq=s=>{const M=s.split(';').map(nm).filter(r=>r.length),n=M.length;if(!(n==2||n==3)||M.some(r=>r.length!=n))throw 0;return M};
+function inv(s){const M=sq(s),n=M.length,d=dt(M),st=[{t:'A = '+mt(M),s:'Ters matris'},{t:'det(A) = '+fm(d),s:'Determinant 0 ise ters yoktur'}];
+if(Math.abs(d)<1e-12)return{st,ans:'det = 0 → ters matris yok'};
+if(n==2){st.push({t:'A⁻¹ = 1/det × [ d  −b ; −c  a ]',s:'2×2 için kısa formül'})}else st.push({t:'[ A | I ] → [ I | A⁻¹ ]',s:'Satır işlemleriyle (Gauss-Jordan) soldaki matrisi birim matrise çeviririz'});
+const A=M.map((r,i)=>[...r,...r.map((_,j)=>+(i==j))]);
+for(let i=0;i<n;i++){let p=i;for(let j=i+1;j<n;j++)if(Math.abs(A[j][i])>Math.abs(A[p][i]))p=j;[A[i],A[p]]=[A[p],A[i]];const v=A[i][i];A[i]=A[i].map(x=>x/v);for(let j=0;j<n;j++)if(j!=i){const k=A[j][i];A[j]=A[j].map((x,c)=>x-k*A[i][c])}}
+const R=A.map(r=>r.slice(n));return{st,ans:'A⁻¹ = '+mt(R)}}
+function mul(s){const P=s.split('*').map(x=>x.split(';').map(nm).filter(r=>r.length));if(P.length!=2)throw 0;const[A,B]=P;
+if(A.some(r=>r.length!=A[0].length)||B.some(r=>r.length!=B[0].length)||A[0].length!=B.length)throw 0;
+const C=A.map(r=>B[0].map((_,j)=>r.reduce((q,v,k)=>q+v*B[k][j],0)));
+return{st:[{t:'A = '+mt(A)+'    B = '+mt(B),s:'A ('+A.length+'×'+A[0].length+') · B ('+B.length+'×'+B[0].length+') → sonuç '+C.length+'×'+C[0].length},{t:'c₁₁ = '+A[0].map((v,k)=>fm(v)+'·'+fm(B[k][0])).join(' + ')+' = '+fm(C[0][0]),s:'Her eleman: A’nın satırı ile B’nin sütununun çarpımları toplamı'}],ans:'A·B = '+mt(C)}}
+/* parça parça integral: polinom × sin/cos/exp */
+function bp(P,T){if(T.t!='f'||!TI[T.f])return null;const pc=pfit(x=>ev(P,x)),a=lin(T.a);if(!pc||pc.length<2||!a)return null;
+const u=S(T.a),base={sin:['−cos','−sin','cos','sin'],cos:['sin','−cos','−sin','cos'],exp:['e^','e^','e^','e^']}[T.f],out=[];let d=pc.slice();
+for(let k=0;k<8&&d.some(v=>Math.abs(v)>1e-12);k++){let sg=k%2?-1:1,fn=base[k%4];if(fn[0]=='−'){sg=-sg;fn=fn.slice(1)}
+const c=sg/Math.pow(a,k+1),ps=pstr(d),cs=Math.abs(c-1)<1e-12?'':Math.abs(c+1)<1e-12?'−':fm(c)+'·';
+out.push(cs+(d.length>1?'('+ps+')·':ps=='1'?'':ps+'·')+(T.f=='exp'?'e^('+u+')':fn+'('+u+')'));d=d.slice(1).map((v,i)=>v*(i+1))}
+return out.join(' + ').replace(/\+ −/g,'− ')}
+/* Rusça */
+let LANG='tr';
+const RC={'производная':'turev','интеграл':'integral','предел':'limit','проценты':'yuzde','пропорция':'oran','факториал':'faktoriyel','сочетания':'kombinasyon','размещения':'permutasyon','среднее':'ortalama','определитель':'det','обратная':'ters','произведение':'carpim','площадь':'alan','периметр':'cevre','объём':'hacim','объем':'hacim','пифагор':'pisagor','арифметическая':'aritmetik','геометрическая':'geometrik','график':'grafik','нод':'ebob','нок':'ekok','простые':'asal','разложить':'carpanlara','раскрыть':'ac','квадрат':'kare','прямоугольник':'dikdortgen','треугольник':'ucgen','круг':'daire','куб':'kup','шар':'kure','цилиндр':'silindir','конус':'koni','призма':'prizma'};
+const ruMap=q=>/[а-яё]/i.test(q)?q.split(/(\s+)/).map(w=>RC[w.toLowerCase()]||w).join(''):q;
+const RU=('Denklem sistemi=Система уравнений|Çarpanlara ayırma=Разложение на множители|Asal çarpanlar=Простые множители|Sayı teorisi=Теория чисел|Oran-orantı=Пропорция|Eşitsizlik=Неравенство|Permütasyon=Размещения|Kombinasyon=Сочетания|Faktöriyel=Факториал|İstatistik=Статистика|Geometri=Геометрия|İntegral=Интеграл|Denklem=Уравнение|Türev=Производная|Yüzde=Проценты|Matris=Матрица|Dizi=Последовательность|Grafik=График|Açılım=Раскрытие скобок|İşlem=Вычисление|İfade=Выражение|Anlayamadım=Не понял|Verilen denklem=Данное уравнение|Verilen ifade=Данное выражение|Verilen eşitsizlik=Данное неравенство|İşlem sırası: parantez, üs, çarpma/bölme, toplama/çıkarma=Порядок действий: скобки, степень, умножение/деление, сложение/вычитание|Her şeyi sol tarafa toplayıp sadeleştirdik=Переносим всё влево и упрощаем|Sabiti karşı tarafa atarız=Переносим число в другую часть|İki tarafı x’in katsayısına böleriz=Делим обе части на коэффициент при x|Diskriminant=Дискриминант|Kök formülü=Формула корней|İki kök=Два корня|çift kök=двойной корень|Gerçek kök yok, karmaşık kökler var=Действительных корней нет, есть комплексные|Gerçek kökler=Действительные корни|Gerçek kök yok=Действительных корней нет|Polinom hâline getirdik=Привели к многочлену|derece=степень|veya=или|Çözüm yok=Решений нет|Her x bir çözümdür=Любое x — решение|Terimleri ayrı ayrı türetiriz.=Дифференцируем по слагаемым.|kuvvet kuralı=правило степени|çarpım kuralı=правило произведения|bölüm kuralı=правило частного|zincir kuralı=цепное правило|sabit çarpan dışarı çıkar=константу выносим|sabit → türevi 0=константа → производная 0|Terim terim antitürev alırız=Находим первообразную по слагаемым|Kuvvet ve temel integral kuralları=Степенное правило и табличные интегралы|Belirli integral=Определённый интеграл|Doğrudan yerine koyma=Прямая подстановка|Soldan=Слева|Sağdan=Справа|Limit yok (soldan ≠ sağdan)=Предела нет (слева ≠ справа)|Belirsizlik var: soldan ve sağdan yaklaşırız=Неопределённость: подходим слева и справа|Artılar=Плюсы|Eksiler=Минусы|Sarrus kuralı=Правило Саррюса|Ortalama=Среднее|Medyan=Медиана|Mod=Мода|Varyans=Дисперсия|Standart sapma=Стандартное отклонение|Sıralı=По порядку|Sayılar=Числа|Değerler=Значения|Alan=Площадь|Çevre=Периметр|Hacim=Объём|formülü=формула|Her aralıkta bir sayı deneriz (işaret tablosu)=Проверяем число в каждом интервале (таблица знаков)|Kökler=Корни|Grafik aşağıda=График ниже|Bu bir f(x) ifadesi. Eğrisi aşağıda=Это выражение f(x). График ниже|Ters matris=Обратная матрица|Determinant 0 ise ters yoktur=Если определитель 0, обратной нет|tanımsız=не определено').split('|').map(p=>p.split('=')).sort((a,b)=>b[0].length-a[0].length);
+const tl=r=>{if(LANG!='ru')return r;const T=s=>s&&RU.reduce((a,[x,y])=>a.split(x).join(y),s);return{...r,k:T(r.k),ans:T(r.ans),st:r.st.map(s=>({t:T(s.t),s:T(s.s)}))}};
+/* ---------- yönlendirici ---------- */
+function run(q){q=ruMap(q);const s=q.trim(),l=s.toLowerCase(),t=tr(l),cm=re=>{const m=t.match(re);return m?l.slice(m[0].length):null};let a;
+if(l.includes(';')&&l.includes('='))return{k:'Denklem sistemi',...sys(l)};
+if(/[<>≤≥]/.test(l)&&!/^limit/.test(t))return{k:'Eşitsizlik',...ineq(l)};
+if(/^(ebob|ekok|obeb|okek)/.test(t))return{k:'Sayı teorisi',...ebob(l,/^(ekok|okek)/.test(t))};
+if(/^(asal|carpan)\s*\d/.test(t))return{k:'Asal çarpanlar',...prime(l)};
+if((a=cm(/^(carpanlara|carpanla)/))!==null)return{k:'Çarpanlara ayırma',...carp(a)};
+if((a=cm(/^(acilim|ac)\b/))!==null)return{k:'Açılım',...ac(a)};
+if(/^(turev|d\/dx)/.test(t))return{k:'Türev',...deriv(l.replace(/^(türev|turev|d\/dx)/,''))};
+if((a=cm(/^(integral|int)\b/))!==null)return{k:'İntegral',...integ(a)};
+if((a=cm(/^limit/))!==null)return{k:'Limit',...limit(a)};
+if(/^(yuzde|%)/.test(t))return{k:'Yüzde',...pct(l)};
+if(/^oran/.test(t))return{k:'Oran-orantı',...oran(l)};
+if(/^(faktoriyel|fakt)/.test(t))return{k:'Faktöriyel',...fakt(l)};
+if(/^(kombinasyon|komb)/.test(t))return{k:'Kombinasyon',...kp(l,1)};
+if(/^(permutasyon|perm)/.test(t))return{k:'Permütasyon',...kp(l,0)};
+if(/^(ortalama|medyan|istatistik|stat)/.test(t))return{k:'İstatistik',...stat(l)};
+if(/^ters/.test(t))return{k:'Matris',...inv(l)};
+if(/^(carpim|matris)/.test(t))return{k:'Matris',...mul(l)};
+if(/^(det|determinant)/.test(t))return{k:'Matris',...det(l)};
+if(/^(aritmetik|geometrik)/.test(t))return{k:'Dizi',...dizi(l,/^geo/.test(t))};
+if(/^(alan|cevre|hacim|pisagor)/.test(t))return{k:'Geometri',...geo(t)};
+if((a=cm(/^(grafik|ciz)/))!==null){const n=parse(a);return{k:'Grafik',st:[{t:'f(x) = '+S(n),s:'x = −10 ile 10 arası çizilir'}],ans:'Grafik aşağıda',gr:n}}
+if(l.includes('='))return{k:'Denklem',...solve(l)};
+const n=parse(l);if(!hasX(n)){const r=arith(n);r.st.unshift({t:S(n),s:'İşlem sırası: parantez, üs, çarpma/bölme, toplama/çıkarma'});return{k:'İşlem',...r}}
+return{k:'Grafik',st:[{t:'f(x) = '+S(n),s:'Bu bir f(x) ifadesi. Eğrisi aşağıda'}],ans:'İpucu: “türev”, “integral”, “carpanlara” yaz ya da sonuna “= 0” ekle',gr:n}}
+/* ---------- arayüz ---------- */
+const out=$('#out');
+function ask(q){q=q.trim();if(!q)return;let h;
+try{const r=tl(run(q));h=`<h3>${r.k}</h3><div class="q">${esc(q)}</div>`+r.st.map((s,i)=>`<div class="st" style="animation-delay:${i*90}ms"><i>${i+1}</i><div>${esc(s.t)}${s.s?`<small>${esc(s.s)}</small>`:''}</div></div>`).join('')+(r.gr?'<canvas style="width:100%;height:240px;margin-top:10px;background:#0d274788;border-radius:8px"></canvas>':'')+`<div class="ans">${esc(r.ans)}</div>`;
+out.insertAdjacentHTML('afterbegin',`<section class="res">${h}</section>`);if(r.gr)plot(out.firstElementChild.querySelector('canvas'),r.gr)}
+catch(e){out.insertAdjacentHTML('afterbegin',`<section class="res err"><h3>Anlayamadım</h3><div class="q">${esc(q)}</div><small>Şunları deneyebilirsin: 3+4*(2-5)^2 · 2x+6=14 · x^2-5x+6=0 · türev x^3*sin(x) · ebob 48 36 · asal 360</small></section>`)}
+$('#in').value='';$('#in').focus()}
+const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'})[c]);
+$('#ink').onclick=()=>window.Foto?Foto.postMessage('ink'):alert('Parmakla yazma sadece telefon uygulamasında çalışır.');
+const UI={tr:{h:'<span>Matematik</span> Defteri',sub:'Sorunu yaz, çözümü adım adım göreyim. İnternet gerekmez.',ph:'örn: 2x+6=14',go:'Çöz',key:'API anahtarı',foto:'Foto',yaz:'Yaz',sum:'Neler yazabilirim?'},ru:{h:'<span>Тетрадь</span> математики',sub:'Напиши задачу — покажу решение по шагам. Интернет не нужен.',ph:'напр.: 2x+6=14',go:'Решить',key:'API-ключ',foto:'Фото',yaz:'Писать',sum:'Что можно ввести?'}};
+const HB=$('#hb').innerHTML,HR='Вычисления · уравнения (1–4 степени) · <b>x+y=5; x-y=1</b> (система) · неравенства (x^2-4&lt;0) · производная · интеграл [a b] · предел x-&gt;a · разложить · раскрыть · проценты 15 200 · пропорция a b c · факториал · сочетания n r · размещения n r · среднее … · det · обратная · произведение A * B · площадь/периметр/объём фигура числа · пифагор a b · арифметическая/геометрическая a1 d n · график f(x)';
+function setLang(l){LANG=l;const u=UI[l];$('#h').innerHTML=u.h;$('#sub').textContent=u.sub;$('#in').placeholder=u.ph;$('#go').textContent=u.go;$('#cam').textContent=u.foto;$('#ink').textContent=u.yaz;$('#sum').textContent=u.sum;$('#hb').innerHTML=l=='ru'?HR:HB;document.documentElement.lang=l;try{localStorage.setItem('lang',l)}catch(e){}}
+$('#lang').onclick=()=>setLang(LANG=='tr'?'ru':'tr');try{if(localStorage.getItem('lang')=='ru')setLang('ru')}catch(e){}
+$('#cam').onclick=()=>window.Foto?Foto.postMessage('open'):alert('Foto özelliği sadece telefon uygulamasında çalışır.');
+window.setFromPhoto=(t,src)=>{const i=$('#in');i.value=t;i.focus();$('#hint').textContent=src=='ai'?'Yapay zekâ okudu. Yanlışsa düzelt, sonra Çöz’e bas.':src=='ink'?'Elle yazını okudum. Yanlışsa düzelt, sonra Çöz’e bas.':'Telefon okudu (internetsiz). Yanlışsa düzelt, sonra Çöz’e bas.'};
+window.photoErr=m=>{$('#hint').textContent=m};
+$('#go').onclick=()=>ask($('#in').value);$('#in').onkeydown=e=>{if(e.key=='Enter')ask(e.target.value)};
+['x','y','z','^','√(','π','(',')','÷','×','=',';','<','>','⌫'].forEach(k=>{const b=document.createElement('button');b.className='k';b.textContent=k;b.onclick=()=>{const i=$('#in');if(k=='⌫')i.value=i.value.slice(0,-1);else i.value+=k;i.focus()};$('#keys').append(b)});
+['3+4*(2-5)^2','2x+6=14','x^3-6x^2+11x-6=0','x+y=5; x-y=1','x^2-4<0','türev x^3*sin(x)','integral x^2+3x','integral 0 2 x^2','limit x->2 (x^2-4)/(x-2)','carpanlara x^2-5x+6','ac (x+2)^3','yüzde 15 200','kombinasyon 5 2','ortalama 4 8 6 5 3','det 1 2; 3 4','alan daire 5','pisagor 3 4','aritmetik 2 3 10','grafik x^2-4','ebob 48 36','asal 360'].forEach(q=>{const b=document.createElement('button');b.className='chip';b.textContent=q;b.onclick=()=>ask(q);$('#chips').append(b)});
+</script></body></html>
