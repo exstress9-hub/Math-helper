@@ -57,7 +57,7 @@ class _AppState extends State<App> {
   Future<String?> _ocr(String path) async {
     final rec = TextRecognizer(script: TextRecognitionScript.latin);
     try {
-      final t = await rec.recognizeText(InputImage.fromFilePath(path));
+      final t = await rec.processImage(InputImage.fromFilePath(path));
       return t.text.replaceAll('\n', ' ');
     } catch (_) {
       return null;
